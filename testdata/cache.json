@@ -1,0 +1,62 @@
+{
+  "@green": {
+    "id": 1,
+    "name": "John"
+  },
+  "@red": {
+    "id": 2,
+    "name": "Doe"
+  },
+  "@blue": {
+    "id": 3,
+    "name": "Alice"
+  },
+  "@silver": {
+    "id": 4,
+    "name": "Bob"
+  },
+  "@gold": {
+    "id": 5,
+    "name": "Emma"
+  },
+  "@purple": {
+    "id": 6,
+    "name": "Michael"
+  },
+  "@orange": {
+    "id": 7,
+    "name": "Sarah"
+  },
+  "@pink": {
+    "id": 8,
+    "name": "James"
+  },
+  "@yellow": {
+    "id": 9,
+    "name": "Emily"
+  },
+  "@brown": {
+    "id": 10,
+    "name": "David"
+  },
+  "@cyan": {
+    "id": 11,
+    "name": "Olivia"
+  },
+  "@magenta": {
+    "id": 12,
+    "name": "Daniel"
+  },
+  "@teal": {
+    "id": 13,
+    "name": "Sophia"
+  },
+  "@lime": {
+    "id": 14,
+    "name": "Matthew"
+  },
+  "@indigo": {
+    "id": 15,
+    "name": "Ava"
+  }
+}

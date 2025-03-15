@@ -186,10 +186,53 @@ goarch: arm64
 pkg: github.com/kittenbark/nanodb
 cpu: Apple M2
 BenchmarkDB_Cache_Sequential
-BenchmarkDB_Cache_Sequential-8   	     106	  11183335 ns/op	-- note: goes through 100 goroutines per iteration.
-PASS
+BenchmarkDB_Cache_Sequential-8   	   10000	    106992 ns/op
+
+---
+
+goos: darwin
+goarch: arm64
+pkg: github.com/kittenbark/nanodb
+cpu: Apple M2
+BenchmarkDB_Cache_Sequential_YAML
+BenchmarkDB_Cache_Sequential_YAML-8   	    7935	    368659 ns/op
 */
 func BenchmarkDB_Cache_Sequential(b *testing.B) {
+	db, err := From[string]("testdata/benchmark.json")
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer os.Remove("testdata/benchmark.json")
+
+	keysN := len(testKeys)
+	for b.Loop() {
+		switch rand.N(3) {
+		case 0:
+			if err := db.Add(testKeys[rand.N(keysN)], testKeys[rand.N(keysN)]); err != nil {
+				b.Fatal(err)
+			}
+		case 1:
+			if _, _, err := db.TryGet(testKeys[rand.N(keysN)]); err != nil {
+				b.Fatal(err)
+			}
+		case 2:
+			if err := db.Del(testKeys[rand.N(keysN)]); err != nil {
+				b.Fatal(err)
+			}
+		}
+	}
+}
+
+/*
+goos: darwin
+goarch: arm64
+pkg: github.com/kittenbark/nanodb
+cpu: Apple M2
+BenchmarkDB_Cache_Parallel
+BenchmarkDB_Cache_Parallel-8   	     106	  11183335 ns/op	-- note: goes through 100 goroutines per iteration.
+PASS
+*/
+func BenchmarkDB_Cache_Parallel(b *testing.B) {
 	db, err := From[string]("testdata/benchmark.json")
 	if err != nil {
 		b.Fatal(err)
@@ -220,32 +263,6 @@ func BenchmarkDB_Cache_Sequential(b *testing.B) {
 			}()
 		}
 		wg.Wait()
-	}
-}
-
-func BenchmarkDB_Cache_Parallel(b *testing.B) {
-	db, err := From[string]("testdata/benchmark.json")
-	if err != nil {
-		b.Fatal(err)
-	}
-	defer os.Remove("testdata/benchmark.json")
-
-	keysN := len(testKeys)
-	for b.Loop() {
-		switch rand.N(3) {
-		case 0:
-			if err := db.Add(testKeys[rand.N(keysN)], testKeys[rand.N(keysN)]); err != nil {
-				b.Fatal(err)
-			}
-		case 1:
-			if _, _, err := db.TryGet(testKeys[rand.N(keysN)]); err != nil {
-				b.Fatal(err)
-			}
-		case 2:
-			if err := db.Del(testKeys[rand.N(keysN)]); err != nil {
-				b.Fatal(err)
-			}
-		}
 	}
 }
 

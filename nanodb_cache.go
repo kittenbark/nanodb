@@ -2,6 +2,7 @@ package nanodb
 
 import (
 	"encoding/json"
+	"io"
 	"iter"
 	"log/slog"
 	"os"
@@ -9,12 +10,28 @@ import (
 	"time"
 )
 
-func From[T any](filename string) (*DBCache[T], error) {
-	db := &DBCache[T]{
-		cache:     filename,
-		data:      make(map[string]T),
-		lifetimes: make(map[string]time.Time),
-		mutex:     &sync.Mutex{},
+type Encoder interface {
+	Encode(any) error
+}
+type Decoder interface {
+	Decode(any) error
+}
+
+type NewEncoder[T Encoder] func(w io.Writer) T
+type NewDecoder[T Decoder] func(r io.Reader) T
+
+func Fromf[T any, EncoderT Encoder, DecoderT Decoder](
+	filename string,
+	encoder NewEncoder[EncoderT],
+	decoder NewDecoder[DecoderT],
+) (*DBCache[T, EncoderT, DecoderT], error) {
+	db := &DBCache[T, EncoderT, DecoderT]{
+		cache:      filename,
+		data:       make(map[string]T),
+		lifetimes:  make(map[string]time.Time),
+		mutex:      &sync.Mutex{},
+		newEncoder: encoder,
+		newDecoder: decoder,
 	}
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		if err := db.save(); err != nil {
@@ -24,16 +41,22 @@ func From[T any](filename string) (*DBCache[T], error) {
 	return db, db.load()
 }
 
-type DBCache[T any] struct {
-	cache     string
-	data      map[string]T
-	lifetimes map[string]time.Time
-	timeout   time.Duration
-	mutex     *sync.Mutex
-	lastSync  time.Time
+func From[T any](filename string) (*DBCache[T, *json.Encoder, *json.Decoder], error) {
+	return Fromf[T](filename, json.NewEncoder, json.NewDecoder)
 }
 
-func (db *DBCache[T]) Get(key string) (result T, err error) {
+type DBCache[T any, EncoderT Encoder, DecoderT Decoder] struct {
+	cache      string
+	data       map[string]T
+	lifetimes  map[string]time.Time
+	timeout    time.Duration
+	mutex      *sync.Mutex
+	lastSync   time.Time
+	newEncoder NewEncoder[EncoderT]
+	newDecoder NewDecoder[DecoderT]
+}
+
+func (db *DBCache[T, EncoderT, DecoderT]) Get(key string) (result T, err error) {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
@@ -43,7 +66,7 @@ func (db *DBCache[T]) Get(key string) (result T, err error) {
 	return db.data[key], nil
 }
 
-func (db *DBCache[T]) TryGet(key string) (result T, ok bool, err error) {
+func (db *DBCache[T, EncoderT, DecoderT]) TryGet(key string) (result T, ok bool, err error) {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
@@ -54,7 +77,7 @@ func (db *DBCache[T]) TryGet(key string) (result T, ok bool, err error) {
 	return
 }
 
-func (db *DBCache[T]) Add(key string, value T) error {
+func (db *DBCache[T, EncoderT, DecoderT]) Add(key string, value T) error {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
@@ -69,7 +92,7 @@ func (db *DBCache[T]) Add(key string, value T) error {
 	return db.save()
 }
 
-func (db *DBCache[T]) Del(key string) error {
+func (db *DBCache[T, EncoderT, DecoderT]) Del(key string) error {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
@@ -85,7 +108,7 @@ func (db *DBCache[T]) Del(key string) error {
 	return db.save()
 }
 
-func (db *DBCache[T]) Seq2() iter.Seq2[string, T] {
+func (db *DBCache[T, EncoderT, DecoderT]) Seq2() iter.Seq2[string, T] {
 	return func(yield func(string, T) bool) {
 		db.mutex.Lock()
 		defer db.mutex.Unlock()
@@ -99,7 +122,7 @@ func (db *DBCache[T]) Seq2() iter.Seq2[string, T] {
 	}
 }
 
-func (db *DBCache[T]) Len() (int, error) {
+func (db *DBCache[T, EncoderT, DecoderT]) Len() (int, error) {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
@@ -110,7 +133,7 @@ func (db *DBCache[T]) Len() (int, error) {
 	return len(db.data), nil
 }
 
-func (db *DBCache[T]) Timeout(timeout time.Duration) *DBCache[T] {
+func (db *DBCache[T, EncoderT, DecoderT]) Timeout(timeout time.Duration) *DBCache[T, EncoderT, DecoderT] {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
@@ -123,7 +146,7 @@ func (db *DBCache[T]) Timeout(timeout time.Duration) *DBCache[T] {
 	return db
 }
 
-func (db *DBCache[T]) scheduleDel(key string) {
+func (db *DBCache[T, EncoderT, DecoderT]) scheduleDel(key string) {
 	if db.timeout == 0 {
 		return
 	}
@@ -133,7 +156,7 @@ func (db *DBCache[T]) scheduleDel(key string) {
 	})
 }
 
-func (db *DBCache[T]) load() error {
+func (db *DBCache[T, EncoderT, DecoderT]) load() error {
 	stat, err := os.Stat(db.cache)
 	if err != nil {
 		return err
@@ -153,10 +176,10 @@ func (db *DBCache[T]) load() error {
 		}
 	}()
 
-	return json.NewDecoder(cache).Decode(&db.data)
+	return db.newDecoder(cache).Decode(&db.data)
 }
 
-func (db *DBCache[T]) save() error {
+func (db *DBCache[T, EncoderT, DecoderT]) save() error {
 	cache, err := os.OpenFile(db.cache, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil && !os.IsNotExist(err) {
 		return err
@@ -167,5 +190,5 @@ func (db *DBCache[T]) save() error {
 		}
 	}()
 
-	return json.NewEncoder(cache).Encode(db.data)
+	return db.newEncoder(cache).Encode(db.data)
 }

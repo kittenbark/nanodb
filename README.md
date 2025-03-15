@@ -1,6 +1,6 @@
 # `nanodb` — the stupidest db I could imagine
 
-Less than 100 lines of code, works amazing — 4 million requests / second.
+~100 lines of code, works amazing — 4 million requests / second.
 
 ```
 goos: darwin

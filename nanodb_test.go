@@ -126,6 +126,57 @@ func TestNanodbCache(t *testing.T) {
 	}
 }
 
+func TestDB_Timeout(t *testing.T) {
+	db := New[string]().Timeout(time.Millisecond * 100)
+
+	db.Add("hello", "world")
+	for _, key := range testKeys {
+		db.Add(key, key)
+	}
+
+	time.Sleep(time.Millisecond * 50)
+	db.Add("hello", "new_world")
+	time.Sleep(time.Millisecond * 60)
+
+	if db.Len() != 1 {
+		t.Errorf("db.Len() != 1")
+	}
+	if db.Get("hello") != "new_world" {
+		t.Errorf("db.Get('hello') != \"new_world\"")
+	}
+}
+
+func TestDBCache_Timeout(t *testing.T) {
+	if err := exec.Command("cp", "testdata/cache.json", "testdata/cache_test.json").Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	db, err := From[*TestingUser]("testdata/cache_test.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove("testdata/cache_test.json")
+
+	db.Timeout(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 50)
+	if err := db.Add("hello", &TestingUser{0, "new_world"}); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Millisecond * 60)
+
+	dblen, err := db.Len()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dblen != 1 {
+		t.Errorf("db.Len() != 1 (%d)", dblen)
+	}
+
+	if val, _ := db.Get("hello"); val.Name != "new_world" {
+		t.Errorf("db.Get('hello') != \"new_world\"")
+	}
+}
+
 /*
 goos: darwin
 goarch: arm64

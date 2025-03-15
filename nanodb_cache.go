@@ -96,7 +96,7 @@ func (db *DBCache[T, EncoderT, DecoderT]) Del(key string) error {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
-	if db.timeout != 0 && time.Since(db.lifetimes[key]) >= db.timeout {
+	if db.timeout == 0 || time.Since(db.lifetimes[key]) >= db.timeout {
 		delete(db.data, key)
 		delete(db.lifetimes, key)
 

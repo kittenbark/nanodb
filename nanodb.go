@@ -77,6 +77,17 @@ func (db *DB[T]) Seq2() iter.Seq2[string, T] {
 	}
 }
 
+func (db *DB[T]) KeysSnapshot() []string {
+	db.mutex.RLock()
+	defer db.mutex.RUnlock()
+
+	keys := make([]string, 0, len(db.data))
+	for key := range db.data {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
 func (db *DB[T]) Len() int {
 	db.mutex.RLock()
 	defer db.mutex.RUnlock()

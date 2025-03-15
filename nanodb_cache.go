@@ -96,7 +96,7 @@ func (db *DBCache[T, EncoderT, DecoderT]) Del(key string) error {
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
 
-	if time.Since(db.lifetimes[key]) >= db.timeout {
+	if db.timeout != 0 && time.Since(db.lifetimes[key]) >= db.timeout {
 		delete(db.data, key)
 		delete(db.lifetimes, key)
 
@@ -131,6 +131,20 @@ func (db *DBCache[T, EncoderT, DecoderT]) Len() (int, error) {
 	}
 
 	return len(db.data), nil
+}
+
+func (db *DBCache[T, EncoderT, DecoderT]) KeysSnapshot() ([]string, error) {
+	db.mutex.Lock()
+	defer db.mutex.Unlock()
+
+	if err := db.load(); err != nil {
+		return nil, err
+	}
+	keys := make([]string, 0, len(db.data))
+	for key := range db.data {
+		keys = append(keys, key)
+	}
+	return keys, nil
 }
 
 func (db *DBCache[T, EncoderT, DecoderT]) Timeout(timeout time.Duration) *DBCache[T, EncoderT, DecoderT] {

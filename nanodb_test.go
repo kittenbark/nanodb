@@ -175,6 +175,11 @@ func TestDBCache_Timeout(t *testing.T) {
 	if val, _ := db.Get("hello"); val.Name != "new_world" {
 		t.Errorf("db.Get('hello') != \"new_world\"")
 	}
+
+	snapshot, _ := db.KeysSnapshot()
+	if len(snapshot) != 1 && snapshot[0] != "hello" {
+		t.Errorf("db.KeysSnapshot() != \"hello\"")
+	}
 }
 
 /*

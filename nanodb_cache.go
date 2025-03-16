@@ -175,7 +175,7 @@ func (db *DBCache[T, EncoderT, DecoderT]) load() error {
 	if err != nil {
 		return err
 	}
-	if stat.ModTime().Before(db.lastSync) {
+	if !stat.ModTime().After(db.lastSync) {
 		return nil
 	}
 

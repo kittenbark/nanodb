@@ -242,7 +242,7 @@ goarch: arm64
 pkg: github.com/kittenbark/nanodb
 cpu: Apple M2
 BenchmarkDB_Cache_Sequential
-BenchmarkDB_Cache_Sequential-8   	   10000	    106992 ns/op
+BenchmarkDB_Cache_Sequential-8   	   12104	     98086 ns/op
 
 ---
 
@@ -285,8 +285,7 @@ goarch: arm64
 pkg: github.com/kittenbark/nanodb
 cpu: Apple M2
 BenchmarkDB_Cache_Parallel
-BenchmarkDB_Cache_Parallel-8   	     106	  11183335 ns/op	-- note: goes through 100 goroutines per iteration.
-PASS
+BenchmarkDB_Cache_Parallel-8   	     124	   9602549 ns/op
 */
 func BenchmarkDB_Cache_Parallel(b *testing.B) {
 	db, err := From[string]("testdata/benchmark.json")
